@@ -21,7 +21,7 @@ do($ = jQuery, window)->
 
     $.fn.autofix_anything = (options)->
         settings = $.extend {}, defaults, options
-        el = $(this)
+        el = $(@)
         curpos = el.position()
         offset = settings.customOffset
         pos = el.offset()
@@ -31,7 +31,7 @@ do($ = jQuery, window)->
         el.addClass 'autofix_sb'
 
         $.fn.manualfix = ->
-            el = $(this)
+            el = $(@)
             pos = el.offset()
 
             if el.hasClass('fixed')
@@ -49,15 +49,17 @@ do($ = jQuery, window)->
         fixAll = (el, settings, curpos, pos)->
             offset = container.offset().top if settings.customOffset is false
 
-            if $(document).scrollTop > offset and $(document).scrollTop() <= (container.height() + (offset - $(window).height()))
+            if $(document).scrollTop() > offset and $(document).scrollTop() <= (container.height() + (offset - $(window).height()))
                 el
                     .removeClass('bottom')
                     .addClass('fixed')
+                    .trigger('autofixed')
                     .css
                         top: 0
                         left: pos.left
                         right: auto
                         bottom: auto
+                console.log 'fixed 1'
             else
                 if $(document).scrollTop() > offset
                     if settings.onlyInContainer is true
@@ -65,22 +67,46 @@ do($ = jQuery, window)->
                             el
                                 .addClass('bottom fixed')
                                 .removeAttr('style')
+                                .trigger('autofixed-bottom')
                                 .css
                                     left: curpos.left
+                            console.log 'fixed 2'
                         else
                             el
                                 .removeClass('bottom fixed')
                                 .removeAttr('style')
+                                .trigger('autofixed'
+                            console.log 'fixed 3')
                 else
                     el
                         .removeClass('bottom fixed')
                         .removeAttr('style')
+                        .trigger('autofixed'
+                    console.log 'fixed 4')
 
             return
 
         if settings.manual is false
-            $(window).scroll ->
+            $(window).on 'scroll.autofix_anything.scroll, resize.autofix_anything.resize', ->
                 fixAll el, settings, curpos, pos
                 return
             return
+    ### 
+    AUTOFIX_ANYTHING DATA-API
+    =========================
+    ###
+    $(window).on 'load', ->
+        $('[data-spy="autofix_anything"]').each ->
+            $spy = $(@)
+            data = $spy.data()
+
+            $spy.autofix_anything
+                customOffset: data.customOffset
+                manual: data.manual
+                onlyInContainer: data.onlyInContainer
+                container: data.container
+
+            return
+        return
     return
+
