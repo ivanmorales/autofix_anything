@@ -18,78 +18,77 @@ do($ = jQuery, window)->
         manual: false
         onlyInContainer: true
         container: null
+        parentOffset: 0
 
     $.fn.autofix_anything = (options)->
         settings = $.extend {}, defaults, options
         el = $(@)
-        curpos = el.position()
+        el.data['curpos'] = el.position()
         offset = settings.customOffset
-        pos = el.offset()
         auto = 'auto'
         container = if settings.container? then el.closest(settings.container) else el.parent()
 
         el.addClass 'autofix_sb'
 
-        $.fn.manualfix = ->
-            el = $(@)
-            pos = el.offset()
-
-            if el.hasClass('fixed')
-                el.removeClass('fixed')
-            else
-                el
-                    .addClass('fixed')
-                    .css
-                        top: 0
-                        left: pos.left
-                        right: auto
-                        bottom: auto
+        resize = =>
+            el.data['curpos'] = el.position()
             return
 
-        fixAll = (el, settings, curpos, pos)->
-            offset = container.offset().top if settings.customOffset is false
+        fixAll = (el, settings, curpos)->
+            pos = el.offset()
+            # If fixed element is taller than the container, don't do anything
+            if el.outerHeight() >= container.outerHeight()
+                return
 
-            if $(document).scrollTop() > offset and $(document).scrollTop() <= (container.height() + (offset - $(window).height()))
+            top = if isNaN(settings.parentOffset) then $(settings.parentOffset).outerHeight() else settings.parentOffset
+
+            offset = container.offset().top - top if settings.customOffset is false
+
+
+            # Fixed scrolling
+            if $(document).scrollTop() > offset and $(document).scrollTop() <= (container.height() - el.outerHeight() + offset)
                 el
                     .removeClass('bottom')
                     .addClass('fixed')
                     .trigger('autofixed')
                     .css
-                        top: 0
+                        top: "#{top}px"
                         left: pos.left
                         right: auto
                         bottom: auto
-                console.log 'fixed 1'
             else
                 if $(document).scrollTop() > offset
                     if settings.onlyInContainer is true
-                        if $(document).scrollTop() > (container.height() - $(window).height())
+                        # Past bottom limit
+                        if $(document).scrollTop() > (container.height() - el.outerHeight() + offset)
                             el
                                 .addClass('bottom fixed')
                                 .removeAttr('style')
                                 .trigger('autofixed-bottom')
                                 .css
-                                    left: curpos.left
-                            console.log 'fixed 2'
+                                    left: curpos
                         else
                             el
                                 .removeClass('bottom fixed')
                                 .removeAttr('style')
-                                .trigger('autofixed'
-                            console.log 'fixed 3')
+                                .trigger('autofixed')
                 else
+                    # Normal scrolling before fixed
                     el
                         .removeClass('bottom fixed')
                         .removeAttr('style')
-                        .trigger('autofixed'
-                    console.log 'fixed 4')
+                        .trigger('autofixed')
 
             return
 
         if settings.manual is false
-            $(window).on 'scroll.autofix_anything.scroll, resize.autofix_anything.resize', ->
-                fixAll el, settings, curpos, pos
-                return
+            $(window)
+                .on 'scroll.autofix_anything, resize.autofix_anything', ->
+                    fixAll el, settings, el.data['curpos']
+                    return
+                .on 'resize.autofix_anything', ->
+                    resize()
+                    return
             return
     ### 
     AUTOFIX_ANYTHING DATA-API
@@ -100,11 +99,11 @@ do($ = jQuery, window)->
             $spy = $(@)
             data = $spy.data()
 
-            $spy.autofix_anything
-                customOffset: data.customOffset
-                manual: data.manual
-                onlyInContainer: data.onlyInContainer
-                container: data.container
+            options = {}
+            for key of defaults
+                options[key] = data[key.toLowerCase()]
+
+            $spy.autofix_anything options
 
             return
         return

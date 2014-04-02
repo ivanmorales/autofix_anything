@@ -20,64 +20,61 @@
     customOffset: false,
     manual: false,
     onlyInContainer: true,
-    container: null
+    container: null,
+    parentOffset: 0
   };
   $.fn.autofix_anything = function(options) {
-    var auto, container, curpos, el, fixAll, offset, pos, settings;
+    var auto, container, el, fixAll, offset, resize, settings;
     settings = $.extend({}, defaults, options);
     el = $(this);
-    curpos = el.position();
+    el.data['curpos'] = el.position();
     offset = settings.customOffset;
-    pos = el.offset();
     auto = 'auto';
     container = settings.container != null ? el.closest(settings.container) : el.parent();
     el.addClass('autofix_sb');
-    $.fn.manualfix = function() {
-      el = $(this);
+    resize = (function(_this) {
+      return function() {
+        el.data['curpos'] = el.position();
+      };
+    })(this);
+    fixAll = function(el, settings, curpos) {
+      var pos, top;
       pos = el.offset();
-      if (el.hasClass('fixed')) {
-        el.removeClass('fixed');
-      } else {
-        el.addClass('fixed').css({
-          top: 0,
-          left: pos.left,
-          right: auto,
-          bottom: auto
-        });
+      if (el.outerHeight() >= container.outerHeight()) {
+        return;
       }
-    };
-    fixAll = function(el, settings, curpos, pos) {
+      top = isNaN(settings.parentOffset) ? $(settings.parentOffset).outerHeight() : settings.parentOffset;
       if (settings.customOffset === false) {
-        offset = container.offset().top;
+        offset = container.offset().top - top;
       }
-      if ($(document).scrollTop() > offset && $(document).scrollTop() <= (container.height() + (offset - $(window).height()))) {
+      if ($(document).scrollTop() > offset && $(document).scrollTop() <= (container.height() - el.outerHeight() + offset)) {
         el.removeClass('bottom').addClass('fixed').trigger('autofixed').css({
-          top: 0,
+          top: "" + top + "px",
           left: pos.left,
           right: auto,
           bottom: auto
         });
-        console.log('fixed 1');
       } else {
         if ($(document).scrollTop() > offset) {
           if (settings.onlyInContainer === true) {
-            if ($(document).scrollTop() > (container.height() - $(window).height())) {
+            if ($(document).scrollTop() > (container.height() - el.outerHeight() + offset)) {
               el.addClass('bottom fixed').removeAttr('style').trigger('autofixed-bottom').css({
-                left: curpos.left
+                left: curpos
               });
-              console.log('fixed 2');
             } else {
-              el.removeClass('bottom fixed').removeAttr('style').trigger('autofixed', console.log('fixed 3'));
+              el.removeClass('bottom fixed').removeAttr('style').trigger('autofixed');
             }
           }
         } else {
-          el.removeClass('bottom fixed').removeAttr('style').trigger('autofixed', console.log('fixed 4'));
+          el.removeClass('bottom fixed').removeAttr('style').trigger('autofixed');
         }
       }
     };
     if (settings.manual === false) {
-      $(window).on('scroll.autofix_anything.scroll, resize.autofix_anything.resize', function() {
-        fixAll(el, settings, curpos, pos);
+      $(window).on('scroll.autofix_anything, resize.autofix_anything', function() {
+        fixAll(el, settings, el.data['curpos']);
+      }).on('resize.autofix_anything', function() {
+        resize();
       });
     }
   };
@@ -88,15 +85,14 @@
    */
   $(window).on('load', function() {
     $('[data-spy="autofix_anything"]').each(function() {
-      var $spy, data;
+      var $spy, data, key, options;
       $spy = $(this);
       data = $spy.data();
-      $spy.autofix_anything({
-        customOffset: data.customOffset,
-        manual: data.manual,
-        onlyInContainer: data.onlyInContainer,
-        container: data.container
-      });
+      options = {};
+      for (key in defaults) {
+        options[key] = data[key.toLowerCase()];
+      }
+      $spy.autofix_anything(options);
     });
   });
 })(jQuery, window);
