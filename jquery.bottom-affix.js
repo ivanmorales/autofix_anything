@@ -2,17 +2,15 @@
 
 /*
  ===========================================================
- * jquery.autofix_anything.js v1
+ * jquery.bottom-affix.js v1
  * ===========================================================
  * Copyright 2013 Pete Rojwongsuriya.
  * http://www.thepetedesign.com
  *
- * Fix position of anything on your website automatically
- * with one js call
+ * Modified 2014 Ivan Morales
+ * http://www.imorales.com
  *
- * https://github.com/peachananr/autofix_anything
- *
- * ==========================================================
+ ==========================================================
  */
 (function($, window) {
   var defaults;
@@ -24,7 +22,7 @@
     parentOffset: 0
   };
   $.fn.autofix_anything = function(options) {
-    var auto, container, el, fixAll, offset, resize, settings;
+    var auto, container, el, fixAll, offset, settings;
     settings = $.extend({}, defaults, options);
     el = $(this);
     el.data['curpos'] = el.position();
@@ -32,13 +30,8 @@
     auto = 'auto';
     container = settings.container != null ? el.closest(settings.container) : el.parent();
     el.addClass('autofix_sb');
-    resize = (function(_this) {
-      return function() {
-        el.data['curpos'] = el.position();
-      };
-    })(this);
     fixAll = function(el, settings, curpos) {
-      var pos, top;
+      var containerHeight, containerTop, elHeight, pos, scrollTop, top, viewHeight;
       pos = el.offset();
       if (el.outerHeight() >= container.outerHeight()) {
         return;
@@ -47,34 +40,33 @@
       if (settings.customOffset === false) {
         offset = container.offset().top - top;
       }
-      if ($(document).scrollTop() > offset && $(document).scrollTop() <= (container.height() - el.outerHeight() + offset)) {
-        el.removeClass('bottom').addClass('fixed').trigger('autofixed').css({
-          top: "" + top + "px",
-          left: pos.left,
-          right: auto,
-          bottom: auto
+      scrollTop = $(document).scrollTop();
+      containerHeight = container.height();
+      containerTop = container.offset().top;
+      elHeight = el.outerHeight();
+      viewHeight = $(window).height();
+      if ((scrollTop + viewHeight) < (containerTop + elHeight)) {
+        el.removeClass('bottom fixed').addClass('fixed').trigger('nc-fixed').css({
+          top: 0
         });
       } else {
-        if ($(document).scrollTop() > offset) {
-          if (settings.onlyInContainer === true) {
-            if ($(document).scrollTop() > (container.height() - el.outerHeight() + offset)) {
-              el.addClass('bottom fixed').removeAttr('style').trigger('autofixed-bottom').css({
-                left: curpos
-              });
-            } else {
-              el.removeClass('bottom fixed').removeAttr('style').trigger('autofixed');
-            }
+        if (scrollTop > offset) {
+          if ((scrollTop + viewHeight) < (containerTop + containerHeight)) {
+            el.addClass('bottom fixed').removeAttr('style').trigger('nc-fixed-bottom').css({
+              top: auto,
+              left: curpos.left
+            });
+          } else {
+            el.removeClass('bottom').removeAttr('style').trigger('nc-fixed').css({
+              top: "" + (containerHeight - elHeight) + "px"
+            });
           }
-        } else {
-          el.removeClass('bottom fixed').removeAttr('style').trigger('autofixed');
         }
       }
     };
     if (settings.manual === false) {
       $(window).on('scroll.autofix_anything, resize.autofix_anything', function() {
         fixAll(el, settings, el.data['curpos']);
-      }).on('resize.autofix_anything', function() {
-        resize();
       });
     }
   };
